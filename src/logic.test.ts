@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addMonths, amountFor, arrears, billMonth, dueDate, monthSummary, paymentsCsv, spendingByMonth, splitPayment } from './logic';
-import { emptyData } from './store';
+import { emptyData } from './data';
 import type { Bill, Data } from './types';
 
 const rent: Bill = {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CATEGORIES, formatCompact, formatRWF, periodLabel } from '../logic';
+import { formatCompact, formatRWF, periodLabel } from '../logic';
+import { t, tk } from '../i18n';
 import type { Category, Period } from '../types';
 
 interface Month {
@@ -19,7 +20,27 @@ function niceMax(v: number): number {
 }
 
 /** Stacked monthly spending by category, with hover tooltip and a table view. */
-export function SpendingChart({ months, current }: { months: Month[]; current: Period }) {
+/**
+ * The chart has at most 8 colours (one per validated palette slot), so the 12
+ * categories are shown in 8 fixed groups. Each group always keeps its colour.
+ */
+export const CHART_GROUPS: { id: string; label: string; cats: Category[] }[] = [
+  { id: 'g1', label: tk('Rent'), cats: ['rent'] },
+  { id: 'g2', label: tk('Water'), cats: ['water'] },
+  { id: 'g3', label: tk('Electricity'), cats: ['electricity'] },
+  { id: 'g4', label: tk('Umutekano & isuku'), cats: ['security', 'sanitation'] },
+  { id: 'g5', label: tk('Cooking gas'), cats: ['gas'] },
+  { id: 'g6', label: tk('Internet, TV & airtime'), cats: ['internet', 'tv', 'airtime'] },
+  { id: 'g7', label: tk('House help'), cats: ['househelp'] },
+  { id: 'g8', label: tk('Contributions & other'), cats: ['contributions', 'other'] },
+];
+
+export function SpendingChart({ months: raw, current }: { months: Month[]; current: Period }) {
+  const months = raw.map((m) => ({
+    period: m.period,
+    total: m.total,
+    byCategory: Object.fromEntries(CHART_GROUPS.map((g) => [g.id, g.cats.reduce((a, c) => a + m.byCategory[c], 0)])) as Record<string, number>,
+  }));
   const [hover, setHover] = useState<number | null>(null);
   const [asTable, setAsTable] = useState(false);
   const hasData = months.some((m) => m.total > 0);
@@ -34,7 +55,7 @@ export function SpendingChart({ months, current }: { months: Month[]; current: P
     return () => ro.disconnect();
   }, [asTable, hasData]);
   const H = W < 480 ? 200 : 240;
-  const used = CATEGORIES.filter((c) => months.some((m) => m.byCategory[c.id] > 0));
+  const used = CHART_GROUPS.filter((c) => months.some((m) => m.byCategory[c.id] > 0));
   const max = niceMax(Math.max(...months.map((m) => m.total)));
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
   const iw = W - PAD.left - PAD.right;
@@ -47,21 +68,21 @@ export function SpendingChart({ months, current }: { months: Month[]; current: P
     <section className="card viz-root">
       <div className="card-head">
         <div>
-          <h3>Spending, last 12 months</h3>
-          <p className="muted small">All payments, by the month they were for</p>
+          <h3>{t('Spending, last 12 months')}</h3>
+          <p className="muted small">{t('All payments, by the month they were for')}</p>
         </div>
-        <button className="btn ghost small" onClick={() => setAsTable((t) => !t)}>{asTable ? 'Show chart' : 'Show table'}</button>
+        <button className="btn ghost small" onClick={() => setAsTable((x) => !x)}>{asTable ? t('Show chart') : t('Show table')}</button>
       </div>
       {!hasData ? (
-        <p className="empty">No payments yet. Record one and it will show up here.</p>
+        <p className="empty">{t('No payments yet. Record one and it will show up here.')}</p>
       ) : asTable ? (
         <div className="table-wrap">
           <table className="table num">
             <thead>
               <tr>
-                <th>Month</th>
-                {used.map((c) => <th key={c.id}>{c.label}</th>)}
-                <th>Total</th>
+                <th>{t('Month')}</th>
+                {used.map((c) => <th key={c.id}>{t(c.label)}</th>)}
+                <th>{t('Total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -79,11 +100,11 @@ export function SpendingChart({ months, current }: { months: Month[]; current: P
         <>
           <div className="legend">
             {used.map((c) => (
-              <span key={c.id}><i style={{ background: `var(--cat-${c.id})` }} />{c.label}</span>
+              <span key={c.id}><i style={{ background: `var(--grp-${c.id})` }} />{t(c.label)}</span>
             ))}
           </div>
           <div className="chart-wrap" ref={wrapRef}>
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Monthly spending by category" onMouseLeave={() => setHover(null)}>
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('Spending, last 12 months')} onMouseLeave={() => setHover(null)}>
               {ticks.map((t) => (
                 <g key={t}>
                   <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className={t === 0 ? 'axis' : 'grid'} />
@@ -106,13 +127,13 @@ export function SpendingChart({ months, current }: { months: Month[]; current: P
                       const top = si === segs.length - 1;
                       const h = Math.max(1, y0 - y1 - (top ? 0 : 2));
                       return top ? (
-                        <path key={c.id} d={roundTop(cx - bw / 2, y1, bw, h, Math.min(4, h))} fill={`var(--cat-${c.id})`} />
+                        <path key={c.id} d={roundTop(cx - bw / 2, y1, bw, h, Math.min(4, h))} fill={`var(--grp-${c.id})`} />
                       ) : (
-                        <rect key={c.id} x={cx - bw / 2} y={y1 + 2} width={bw} height={Math.max(0.5, y0 - y1 - 2)} fill={`var(--cat-${c.id})`} />
+                        <rect key={c.id} x={cx - bw / 2} y={y1 + 2} width={bw} height={Math.max(0.5, y0 - y1 - 2)} fill={`var(--grp-${c.id})`} />
                       );
                     })}
                     <text x={cx} y={H - 8} className={`tick${m.period === current ? ' strong' : ''}`} textAnchor="middle">
-                      {W < 480 ? periodLabel(m.period, true).charAt(0) : periodLabel(m.period, true).split(' ')[0]}
+                      {W < 480 ? periodLabel(m.period, true).slice(0, 1) : periodLabel(m.period, true).split(' ')[0]}
                     </text>
                   </g>
                 );
@@ -128,9 +149,9 @@ export function SpendingChart({ months, current }: { months: Month[]; current: P
               >
                 <strong>{periodLabel(months[hover].period)}</strong>
                 {used.filter((c) => months[hover].byCategory[c.id] > 0).reverse().map((c) => (
-                  <div key={c.id} className="tt-row"><i style={{ background: `var(--cat-${c.id})` }} />{c.label}<span>{formatRWF(months[hover].byCategory[c.id])}</span></div>
+                  <div key={c.id} className="tt-row"><i style={{ background: `var(--grp-${c.id})` }} />{t(c.label)}<span>{formatRWF(months[hover].byCategory[c.id])}</span></div>
                 ))}
-                <div className="tt-row total">Total<span>{formatRWF(months[hover].total)}</span></div>
+                <div className="tt-row total">{t('Total')}<span>{formatRWF(months[hover].total)}</span></div>
               </div>
             )}
           </div>

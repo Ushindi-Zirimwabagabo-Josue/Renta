@@ -1,50 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Data } from './types';
+import { LEGACY_KEYS, STORAGE_KEY, emptyData, parseData, stamp } from './data';
 
-const KEY = 'renta:data:v1';
-
-export function emptyData(): Data {
-  return {
-    version: 1,
-    setupDone: false,
-    bills: [],
-    charges: [],
-    payments: [],
-    settings: { householdName: '', reminderDays: 5 },
-  };
-}
-
-/** Validates and normalises data from storage or a backup file. Throws on invalid input. */
-export function parseData(raw: unknown): Data {
-  if (!raw || typeof raw !== 'object') throw new Error('Not a Renta backup file');
-  const r = raw as Partial<Data>;
-  if (r.version !== 1 || !Array.isArray(r.bills) || !Array.isArray(r.payments)) {
-    throw new Error('Not a Renta backup file');
-  }
-  const base = emptyData();
-  return {
-    version: 1,
-    setupDone: r.setupDone ?? true,
-    bills: r.bills,
-    charges: Array.isArray(r.charges) ? r.charges : [],
-    payments: r.payments,
-    settings: { ...base.settings, ...(r.settings ?? {}) },
-  };
-}
+export { emptyData, parseData };
 
 export function loadData(): Data {
-  try {
-    const s = localStorage.getItem(KEY);
-    if (s) return parseData(JSON.parse(s));
-  } catch {
-    /* storage unavailable or corrupt – start fresh */
+  for (const key of [STORAGE_KEY, ...LEGACY_KEYS]) {
+    try {
+      const s = localStorage.getItem(key);
+      if (s) return parseData(JSON.parse(s));
+    } catch {
+      /* storage unavailable or corrupt – try the next key */
+    }
   }
   return emptyData();
 }
 
 function saveData(d: Data): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(d));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
     return true;
   } catch {
     return false;
@@ -53,16 +27,17 @@ function saveData(d: Data): boolean {
 
 export type Update = (fn: (d: Data) => Data) => void;
 
-export function useData(): [Data, Update, boolean] {
+export type Replace = (d: Data | ((cur: Data) => Data)) => void;
+
+export function useData(): [Data, Update, boolean, Replace] {
   const [data, setData] = useState<Data>(loadData);
   const [saved, setSaved] = useState(true);
   useEffect(() => {
     setSaved(saveData(data));
   }, [data]);
-  // Keep several open tabs in sync.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === KEY && e.newValue) {
+      if (e.key === STORAGE_KEY && e.newValue) {
         try {
           setData(parseData(JSON.parse(e.newValue)));
         } catch {
@@ -73,6 +48,9 @@ export function useData(): [Data, Update, boolean] {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-  const update = useCallback<Update>((fn) => setData((d) => fn(d)), []);
-  return [data, update, saved];
+  /** Normal edits: change-tracked for sync. */
+  const update = useCallback<Update>((fn) => setData((d) => stamp(d, fn(d))), []);
+  /** Replace the whole data set without stamping (used after a sync merge). */
+  const replace = useCallback<Replace>((d) => setData(d), []);
+  return [data, update, saved, replace];
 }

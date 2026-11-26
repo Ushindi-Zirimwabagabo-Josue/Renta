@@ -1,7 +1,7 @@
 {
-  "name": "Renta – Household Bills",
-  "short_name": "Renta",
-  "description": "Track rent, water, electricity, umutekano and isuku bills.",
+  "name": "Fagitire – Household Bills",
+  "short_name": "Fagitire",
+  "description": "Household bills, income, budget and savings for Kigali homes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

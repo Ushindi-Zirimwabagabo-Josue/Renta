@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { periodLabel, uid } from '../logic';
+import { periodLabel, uid, billName } from '../logic';
+import { t } from '../i18n';
 import type { Bill, Charge, Period } from '../types';
-import { Field, Modal, MoneyInput } from './ui';
+import { Field, Modal, MoneyInput, PhotoPicker } from './ui';
 
 interface Props {
   bill: Bill;
@@ -17,29 +18,33 @@ export function ChargeForm({ bill, period, existing, onSave, onDelete, onClose }
   const [amount, setAmount] = useState<number | ''>(existing?.amount ?? '');
   const [units, setUnits] = useState(existing?.units != null ? String(existing.units) : '');
   const [note, setNote] = useState(existing?.note ?? '');
+  const [photoIds, setPhotoIds] = useState<string[]>(existing?.photoIds ?? []);
   return (
-    <Modal title={`${bill.name} bill – ${periodLabel(period)}`} onClose={onClose}>
+    <Modal title={t('{name} bill – {month}', { name: billName(bill), month: periodLabel(period) })} onClose={onClose}>
       <form
         className="form"
         onSubmit={(e) => {
           e.preventDefault();
           if (amount === '') return;
-          onSave({ id: existing?.id ?? uid(), billId: bill.id, period, amount, units: units ? Number(units) : undefined, note: note.trim() || undefined });
+          onSave({ id: existing?.id ?? uid(), billId: bill.id, period, amount, units: units ? Number(units) : undefined, note: note.trim() || undefined, photoIds: photoIds.length ? photoIds : undefined });
         }}
       >
-        <Field label="Amount on the bill">
-          <MoneyInput value={amount} onChange={setAmount} required />
+        <Field label={t('Amount on the bill')}>
+          <MoneyInput value={amount} onChange={setAmount} required label={t('Amount')} />
         </Field>
-        <Field label="Consumption (m³ / units)" hint="Optional – from your meter or bill">
+        <Field label={t('Consumption (m³ / units)')} hint={t('Optional – from your meter or bill')}>
           <input inputMode="decimal" value={units} onChange={(e) => setUnits(e.target.value.replace(/[^\d.]/g, ''))} />
         </Field>
-        <Field label="Note">
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+        <Field label={t('Note')}>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Optional')} />
+        </Field>
+        <Field label={t('Photo of the bill')}>
+          <PhotoPicker ids={photoIds} onChange={setPhotoIds} />
         </Field>
         <div className="form-actions">
-          {onDelete && <button type="button" className="btn danger-ghost" onClick={onDelete}>Remove bill</button>}
-          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn primary">Save</button>
+          {onDelete && <button type="button" className="btn danger-ghost" onClick={onDelete}>{t('Remove bill')}</button>}
+          <button type="button" className="btn ghost" onClick={onClose}>{t('Cancel')}</button>
+          <button type="submit" className="btn primary">{t('Save')}</button>
         </div>
       </form>
     </Modal>

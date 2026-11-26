@@ -1,31 +1,61 @@
 import type { Bill, Category, Charge, Data, Frequency, Method, Payment, Period } from './types';
+import { monthName, t, tk } from './i18n';
 
-export const CATEGORIES: { id: Category; label: string; local: string; icon: string; defaultProvider: string; defaultFrequency: Frequency }[] = [
-  { id: 'rent', label: 'Rent', local: 'Ubukode', icon: '🏠', defaultProvider: 'Landlord', defaultFrequency: 'fixed' },
-  { id: 'water', label: 'Water', local: 'Amazi', icon: '💧', defaultProvider: 'WASAC', defaultFrequency: 'variable' },
-  { id: 'electricity', label: 'Electricity', local: 'Amashanyarazi', icon: '⚡', defaultProvider: 'REG (Cash Power)', defaultFrequency: 'prepaid' },
-  { id: 'security', label: 'Security', local: 'Umutekano', icon: '🛡️', defaultProvider: 'Umudugudu', defaultFrequency: 'fixed' },
-  { id: 'sanitation', label: 'Sanitation', local: 'Isuku', icon: '🧹', defaultProvider: 'Waste collection company', defaultFrequency: 'fixed' },
-  { id: 'other', label: 'Other', local: 'Ibindi', icon: '📄', defaultProvider: '', defaultFrequency: 'fixed' },
+export interface CategoryInfo {
+  id: Category;
+  label: string;
+  local: string;
+  icon: string;
+  defaultProvider: string;
+  defaultFrequency: Frequency;
+  defaultDueDay: number;
+  hint: string;
+}
+
+export const CATEGORIES: CategoryInfo[] = [
+  { id: 'rent', label: tk('Rent'), local: 'Ubukode', icon: '🏠', defaultProvider: tk('Landlord'), defaultFrequency: 'fixed', defaultDueDay: 5, hint: tk('Monthly rent to your landlord') },
+  { id: 'water', label: tk('Water'), local: 'Amazi', icon: '💧', defaultProvider: 'WASAC', defaultFrequency: 'variable', defaultDueDay: 20, hint: tk('WASAC bill varies – enter your usual amount as an estimate') },
+  { id: 'electricity', label: tk('Electricity'), local: 'Amashanyarazi', icon: '⚡', defaultProvider: 'REG (Cash Power)', defaultFrequency: 'prepaid', defaultDueDay: 1, hint: tk('Cash Power is prepaid – set a monthly budget') },
+  { id: 'security', label: tk('Security'), local: 'Umutekano', icon: '🛡️', defaultProvider: 'Umudugudu', defaultFrequency: 'fixed', defaultDueDay: 10, hint: tk('Monthly umutekano fee to your umudugudu') },
+  { id: 'sanitation', label: tk('Sanitation'), local: 'Isuku', icon: '🧹', defaultProvider: tk('Waste collection company'), defaultFrequency: 'fixed', defaultDueDay: 10, hint: tk('Monthly isuku fee for waste collection') },
+  { id: 'internet', label: tk('Internet'), local: 'Interineti', icon: '📶', defaultProvider: '', defaultFrequency: 'fixed', defaultDueDay: 1, hint: tk('Home internet / Wi-Fi subscription') },
+  { id: 'tv', label: tk('TV'), local: 'Televiziyo', icon: '📺', defaultProvider: 'Canal+', defaultFrequency: 'fixed', defaultDueDay: 1, hint: tk('Canal+, StarTimes or DStv – the due day is your renewal date') },
+  { id: 'gas', label: tk('Cooking gas'), local: 'Gaz', icon: '🔥', defaultProvider: '', defaultFrequency: 'prepaid', defaultDueDay: 1, hint: tk('Log each refill – the app learns how long a cylinder lasts') },
+  { id: 'airtime', label: tk('Airtime & data'), local: 'Amainite', icon: '📱', defaultProvider: 'MTN / Airtel', defaultFrequency: 'prepaid', defaultDueDay: 1, hint: tk('Airtime and data bundles against a monthly budget') },
+  { id: 'househelp', label: tk('House help'), local: 'Umukozi', icon: '🧑‍🍳', defaultProvider: '', defaultFrequency: 'fixed', defaultDueDay: 30, hint: tk('Monthly salary – advances are deducted from it') },
+  { id: 'contributions', label: tk('Contributions'), local: 'Imisanzu / Ubufasha', icon: '🤝', defaultProvider: '', defaultFrequency: 'occasional', defaultDueDay: 1, hint: tk('Tithe, offerings, weddings and funerals') },
+  { id: 'other', label: tk('Other'), local: 'Ibindi', icon: '📄', defaultProvider: '', defaultFrequency: 'fixed', defaultDueDay: 1, hint: '' },
 ];
 
+/** The categories offered in the first-run setup. */
+export const SETUP_CATEGORIES: Category[] = ['rent', 'water', 'electricity', 'security', 'sanitation', 'internet', 'tv', 'gas', 'airtime', 'househelp', 'contributions'];
+export const DEFAULT_ON: Category[] = ['rent', 'water', 'electricity', 'security', 'sanitation'];
+
 export const categoryInfo = (c: Category) => CATEGORIES.find((x) => x.id === c) ?? CATEGORIES[CATEGORIES.length - 1];
+export const categoryLabel = (c: Category) => t(categoryInfo(c).label);
+
+/** A bill's name; default English category names follow the chosen language. */
+export const billName = (b: { name: string; category: Category }): string => (b.name === categoryInfo(b.category).label ? t(b.name) : b.name);
 
 export const METHODS: { id: Method; label: string }[] = [
   { id: 'momo', label: 'MTN MoMo' },
   { id: 'airtel', label: 'Airtel Money' },
-  { id: 'cash', label: 'Cash' },
-  { id: 'bank', label: 'Bank transfer' },
-  { id: 'card', label: 'Card' },
-  { id: 'other', label: 'Other' },
+  { id: 'cash', label: tk('Cash') },
+  { id: 'bank', label: tk('Bank transfer') },
+  { id: 'card', label: tk('Card') },
+  { id: 'other', label: tk('Other') },
 ];
-export const methodLabel = (m: Method) => METHODS.find((x) => x.id === m)?.label ?? m;
+export const methodLabel = (m: Method) => t(METHODS.find((x) => x.id === m)?.label ?? m);
 
 export const FREQUENCIES: { id: Frequency; label: string; hint: string }[] = [
-  { id: 'fixed', label: 'Fixed monthly', hint: 'Same amount every month' },
-  { id: 'variable', label: 'Varies monthly', hint: 'You enter the bill each month (e.g. WASAC water)' },
-  { id: 'prepaid', label: 'Prepaid', hint: 'Buy units when needed (e.g. Cash Power)' },
+  { id: 'fixed', label: tk('Fixed monthly'), hint: tk('Same amount every month') },
+  { id: 'variable', label: tk('Varies monthly'), hint: tk('You enter the bill each month (e.g. WASAC water)') },
+  { id: 'prepaid', label: tk('Prepaid / top-up'), hint: tk('Buy units when needed (e.g. Cash Power, gas, airtime)') },
+  { id: 'occasional', label: tk('Occasional'), hint: tk('Record contributions when they happen (tithe, weddings, funerals)') },
 ];
+
+/** Bills tracked as a running log of top-ups or contributions rather than a monthly amount owed. */
+export const isLogBill = (b: Bill) => b.frequency === 'prepaid' || b.frequency === 'occasional';
 
 /* ---------- ids & formatting ---------- */
 
@@ -41,6 +71,7 @@ export function formatRWF(n: number): string {
 export function formatCompact(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000) return `${+(n / 1_000).toFixed(1)}k`;
+  if (Math.abs(n) < 10) return String(+n.toFixed(2));
   return String(Math.round(n));
 }
 
@@ -86,12 +117,18 @@ export function daysUntil(from: string, to: string): number {
 
 export function periodLabel(p: Period, short = false): string {
   const [y, m] = p.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: short ? 'short' : 'long', year: 'numeric' });
+  const name = monthName(m - 1, short);
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${y}`;
 }
 
 export function dateLabel(d: string): string {
   const [y, m, day] = d.split('-').map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${day} ${monthName(m - 1, true)} ${y}`;
+}
+
+export function addDays(date: string, n: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return todayStr(new Date(y, m - 1, d + n));
 }
 
 /* ---------- bill logic ---------- */
@@ -193,7 +230,7 @@ export interface ArrearsItem {
 export function arrears(data: Data, p: Period, today: string): ArrearsItem[] {
   const out: ArrearsItem[] = [];
   for (const bill of data.bills) {
-    if (bill.frequency === 'prepaid') continue;
+    if (isLogBill(bill)) continue;
     const last = addMonths(p, -1);
     const end = bill.endPeriod && bill.endPeriod < last ? bill.endPeriod : last;
     const n = monthsBetween(bill.startPeriod, end);
@@ -220,8 +257,8 @@ export interface MonthSummary {
 
 export function monthSummary(data: Data, p: Period, today: string): MonthSummary {
   const bills = billsForPeriod(data, p);
-  const rows = bills.filter((b) => b.frequency !== 'prepaid').map((b) => billMonth(data, b, p, today));
-  const prepaid = bills.filter((b) => b.frequency === 'prepaid').map((b) => prepaidMonth(data, b, p));
+  const rows = bills.filter((b) => !isLogBill(b)).map((b) => billMonth(data, b, p, today));
+  const prepaid = bills.filter(isLogBill).map((b) => prepaidMonth(data, b, p));
   return {
     period: p,
     rows,
@@ -266,7 +303,7 @@ export function splitPayment(base: Omit<Payment, 'id' | 'period'>, startPeriod: 
       id: uid(),
       period: addMonths(startPeriod, i),
       amount,
-      note: n > 1 ? [base.note, `Part ${i + 1}/${n} of ${formatRWF(base.amount)}`].filter(Boolean).join(' · ') : base.note,
+      note: n > 1 ? [base.note, t('Part {i}/{n} of {total}', { i: i + 1, n, total: formatRWF(base.amount) })].filter(Boolean).join(' · ') : base.note,
     });
   }
   return out;
@@ -284,12 +321,12 @@ export function paymentsCsv(data: Data): string {
     const s = v == null ? '' : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const header = ['Date', 'For month', 'Category', 'Bill', 'Provider', 'Amount (RWF)', 'Method', 'Reference', 'kWh', 'Token', 'Note'];
+  const header = [t('Date'), t('For month'), t('Category'), t('Bill'), t('Provider'), t('Amount (RWF)'), t('Method'), t('Reference'), 'kWh', t('Token'), t('Note')];
   const rows = [...data.payments]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((p) => {
       const b = billById.get(p.billId);
-      return [p.date, p.period, b ? categoryInfo(b.category).label : '', b?.name ?? '(deleted)', b?.provider ?? '', p.amount, methodLabel(p.method), p.reference, p.kwh, p.token, p.note];
+      return [p.date, p.period, b ? categoryLabel(b.category) : '', b?.name ?? t('(deleted bill)'), b?.provider ?? '', p.amount, methodLabel(p.method), p.reference, p.kwh, p.token, p.note];
     });
   return [header, ...rows].map((r) => r.map(esc).join(',')).join('\n');
 }
@@ -297,14 +334,14 @@ export function paymentsCsv(data: Data): string {
 export function receiptText(data: Data, p: Payment): string {
   const b = data.bills.find((x) => x.id === p.billId);
   const lines = [
-    `Payment receipt – ${b ? `${categoryInfo(b.category).label} (${b.name})` : 'Bill'}`,
-    `For: ${periodLabel(p.period)}`,
-    `Amount: ${formatRWF(p.amount)}`,
-    `Paid on: ${dateLabel(p.date)} via ${methodLabel(p.method)}`,
+    `${t('Payment receipt')} – ${b ? `${categoryLabel(b.category)} (${billName(b)})` : t('Bill')}`,
+    `${t('For')}: ${periodLabel(p.period)}`,
+    `${t('Amount')}: ${formatRWF(p.amount)}`,
+    `${t('Paid on')}: ${dateLabel(p.date)} – ${methodLabel(p.method)}`,
   ];
-  if (p.reference) lines.push(`Reference: ${p.reference}`);
-  if (p.token) lines.push(`Token: ${p.token}`);
-  if (p.kwh) lines.push(`Units: ${p.kwh} kWh`);
-  if (data.settings.householdName) lines.push(`From: ${data.settings.householdName}`);
+  if (p.reference) lines.push(`${t('Reference')}: ${p.reference}`);
+  if (p.token) lines.push(`${t('Token')}: ${p.token}`);
+  if (p.kwh) lines.push(`${t('Units')}: ${p.kwh} kWh`);
+  if (data.settings.householdName) lines.push(`${t('From')}: ${data.settings.householdName}`);
   return lines.join('\n');
 }
